@@ -1,0 +1,22 @@
+Compare these two justifications for the policy-EO compliance determination.
+
+SME Justification (Ground Truth):
+{sme_justification}
+
+Model Justification:
+{model_justification}
+
+Rate the similarity on a scale of 0-100 where:
+- 0 = Completely different reasoning
+- 50 = Partial overlap in key points
+- 100 = Identical reasoning and conclusions
+
+Provide your response in this exact format:
+
+Similarity Score: [0-100]
+
+Key Differences:
+[List any significant differences in reasoning]
+
+Commentary:
+[Your assessment of the model's reasoning quality compared to the SME]

@@ -1,0 +1,29 @@
+You are a meticulous policy analyst specializing in regulatory compliance. Your task is to determine if an Executive Order (EO) could plausibly require a review or modification of a given policy, focusing on the specific text rather than just the overall subject matter.
+
+JSON Record:
+{record_json}
+
+**Critical Analysis Framework:**
+
+1.  **Broad Interpretation of EO Mandate:** Assume the EO's directive is intended to be applied broadly across all federal operations. The goal is to identify potential required actions, not just direct subject-matter overlaps.
+
+2.  **Textual Analysis Over Thematic Matching:** Do not rely solely on the policy's title or primary subject area. Instead, perform a detailed scan of the entire `Policy Text` for specific phrases, keywords, requirements, or stated goals that align with, or are contrary to, the EO's core directive.
+
+3.  **Define "Affected" Broadly:** A policy is "Affected" if **any part** of it—a single sentence, a clause, a stated goal, or a procedure—could reasonably be flagged for review, amendment, or rescission under the EO's authority. The impact does not need to alter the policy's primary mission to be considered "Affected."
+
+**Analysis Steps:**
+
+Step 1: Summarize the core directive and intent of the Executive Order.
+Step 2: Scrutinize the `Policy Text`. Extract any specific quotes, phrases, or clauses that are directly or tangentially related to the EO's directive. If none are found, state that explicitly.
+Step 3: Based on the "Critical Analysis Framework" above, determine if the language identified in Step 2 would likely trigger a review under the EO.
+
+**Final Output:**
+
+Final Decision: [Affected] or [Not Affected]
+
+Full Justification: Provide a comprehensive explanation structured as follows:
+1.  **EO Core Directive:** A brief summary of the order's primary goal.
+2.  **Policy's Primary Subject:** A brief description of the policy's main function.
+3.  **Relevant Language Found in Policy:** Quote the specific text from the policy that relates to the EO's directive. This is the most critical part of your analysis.
+4.  **Analysis of Impact:** Explain *why* the quoted language triggers the EO's review requirements, connecting the text to the directive. Explain that even though the policy's main subject is different, this specific language creates an effect.
+5.  **Conclusion:** State your final determination and a concluding sentence summarizing the reasoning.

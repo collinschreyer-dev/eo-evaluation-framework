@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: eo-evaluation-framework
+    runtime: docker
+    plan: starter
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CLAUDE_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+    disk:
+      name: eval-data
+      mountPath: /data
+      sizeGB: 1

@@ -1,0 +1,18 @@
+You are reviewing the relevance of a government order to a specific policy. Based on the following JSON input, reassess the relationship and assign a final relevance flag.
+
+JSON Record:
+{record_json}
+
+Step 1: Identify the domain or subject area of the policy.
+Step 2: Identify the domain or subject area of the order.
+Step 3: Compare both domains and assess whether the order has a direct or indirect impact on the policy.
+Step 4: Consider the summary and initial flag as context, but make your own independent assessment.
+
+Final Decision: [Affected] or [Not Affected]
+
+Full Justification: Provide a comprehensive explanation that includes:
+1. The specific domain/subject area of the policy
+2. The specific domain/subject area of the executive order
+3. Detailed analysis of whether there is direct or indirect impact
+4. Key language or provisions that support your determination
+5. Any nuances or edge cases considered in your assessment

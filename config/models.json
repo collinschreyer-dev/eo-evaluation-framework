@@ -1,0 +1,35 @@
+{
+    "models": [
+        {
+            "id": "gemini-2.5-pro",
+            "name": "Gemini 2.5 Pro",
+            "provider": "google",
+            "enabled": true
+        },
+        {
+            "id": "claude-sonnet-4-20250514",
+            "name": "Claude Sonnet 4",
+            "provider": "anthropic",
+            "enabled": true
+        },
+        {
+            "id": "gemini-2.5-pro-preview",
+            "name": "Gemini 2.5 Pro Preview",
+            "provider": "google",
+            "enabled": false
+        },
+        {
+            "id": "gemini-3-pro-preview",
+            "name": "Gemini 3 Pro Preview",
+            "provider": "google",
+            "enabled": false
+        },
+        {
+            "id": "claude_3_7_sonnet",
+            "name": "Claude 3.7 Sonnet",
+            "provider": "anthropic",
+            "enabled": false
+        }
+    ],
+    "default_model": "gemini-2.5-pro"
+}

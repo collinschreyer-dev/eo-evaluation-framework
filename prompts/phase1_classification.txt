@@ -1,0 +1,14 @@
+Policy Document:
+{policy_text}
+
+Executive Order:
+{eo_text}
+
+You are a smart Policy analyst working at GSA (General Services Administration). Determine if the policy is affected by the executive order and summarize the findings. Your summary should include:
+
+1. A brief summary of the policy text.
+2. A brief summary of the executive order text.
+3. A detailed explanation of if this executive order applies to the policy.
+4. Next steps to achieve compliance if the policy is affected.
+
+At the end of your response, clearly state: "Final Determination: [Affected]" or "Final Determination: [Not Affected]"

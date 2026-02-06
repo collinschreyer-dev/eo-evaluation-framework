@@ -1,0 +1,11 @@
+{
+    "batch_size": 20,
+    "max_workers": 5,
+    "timeout_seconds": 120,
+    "database_path": "results/benchmark.db",
+    "output_formats": [
+        "csv",
+        "json",
+        "sqlite"
+    ]
+}
