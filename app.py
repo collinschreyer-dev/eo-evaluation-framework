@@ -1006,8 +1006,11 @@ IMPORTANT: Output ONLY the new prompt, no explanations. Start directly with the 
     # MODE 2: From Previous Run
     # ==========================================
     else:
-        # Load Run Data
-        results_dir = Path('results')
+        # Load Run Data - use same output_dir as storage for consistency
+        if os.path.exists('/data') and os.access('/data', os.W_OK):
+            results_dir = Path('/data')
+        else:
+            results_dir = Path('results')
         json_files = list(results_dir.glob('*_full.json')) if results_dir.exists() else []
         
         if not json_files:
