@@ -167,3 +167,39 @@ def generate_summary(
     summary.append("=" * 60)
     
     return "\n".join([s for s in summary if s != "" or s == ""])
+
+
+def calculate_metrics_by_group(
+    results: List[Dict],
+    group_field: str = "Office",
+    predicted_field: str = "phase2_flag",
+    ground_truth_field: str = "updated_flag"
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Calculate metrics per group (e.g., per Office/division).
+    
+    Args:
+        results: List of result dictionaries
+        group_field: Field to group by (default 'Office')
+        predicted_field: Field containing model predictions
+        ground_truth_field: Field containing ground truth labels
+    
+    Returns:
+        Dict keyed by group value, each containing full metrics + TP/FP/FN/TN
+    """
+    from collections import defaultdict
+    
+    groups = defaultdict(list)
+    for r in results:
+        group_val = r.get(group_field, 'Unknown') or 'Unknown'
+        groups[group_val].append(r)
+    
+    group_metrics = {}
+    for group_val, group_results in sorted(groups.items()):
+        group_metrics[group_val] = calculate_metrics(
+            group_results,
+            predicted_field=predicted_field,
+            ground_truth_field=ground_truth_field
+        )
+    
+    return group_metrics

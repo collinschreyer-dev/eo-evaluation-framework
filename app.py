@@ -330,6 +330,7 @@ with tab_run:
     with col2:
         st.markdown("### ")  # Spacer
         run_clicked = st.button("🚀 Run Evaluation", use_container_width=True, type="primary")
+        is_test_run = st.checkbox("🧪 Mark as test run", value=False, key="is_test_run_cb")
     
     # ==========================================
     # Scrollable Console Container
@@ -610,13 +611,30 @@ with tab_run:
                 if run_phase3 and metrics.get('avg_justification_similarity'):
                     log(f'<b>Avg Justification Similarity: {metrics["avg_justification_similarity"]:.1f}%</b>', "📝")
                 
-                # Save
+                # Save — snapshot prompts and compute dataset hash
+                import hashlib as _hl
+                prompt_version_id = ""
+                dataset_hash = ""
+                try:
+                    # Snapshot the primary prompt used
+                    primary_phase = 'phase2' if run_phase2 else 'phase1'
+                    primary_file = prompt2_file if run_phase2 else prompt1_file
+                    primary_content = prompt2 if run_phase2 else prompt1
+                    prompt_version_id = storage.save_prompt_version(primary_phase, primary_file, primary_content)
+                    # Dataset hash
+                    dataset_hash = _hl.sha256(df.to_csv(index=False).encode()).hexdigest()[:16]
+                except Exception:
+                    pass  # Non-critical
+                
                 run_id = storage.save_run(
                     results=results,
                     metrics=metrics,
                     model=selected_model,
-                    prompt_version="v1",
-                    phases_run=",".join(phases)
+                    prompt_version=prompt2_file if run_phase2 else prompt1_file,
+                    phases_run=",".join(phases),
+                    prompt_version_id=prompt_version_id,
+                    dataset_hash=dataset_hash,
+                    is_test_run=is_test_run
                 )
                 
                 st.session_state.results = results
@@ -1523,44 +1541,266 @@ IMPORTANT: Output ONLY the new prompt, no explanations. Start directly with the 
 with tab_results:
     st.markdown("### 📊 Run History")
     
-    history = storage.get_run_history(limit=20)
+    # --- Controls ---
+    ctrl_col1, ctrl_col2 = st.columns([3, 1])
+    with ctrl_col2:
+        show_test_runs = st.checkbox("Show test runs", value=False, key="show_test_runs_cb")
+    
+    history = storage.get_run_history(limit=30, include_test_runs=show_test_runs)
     
     if not history:
         st.info("No runs yet. Start an evaluation to see results here.")
     else:
-        # Convert to dataframe
         df_history = pd.DataFrame(history)
         
-        # Select columns to display
-        display_cols = ['run_id', 'model', 'accuracy', 'precision_score', 'recall', 'f1_score', 'total_records', 'timestamp']
+        # Display columns
+        display_cols = ['run_id', 'model', 'accuracy', 'precision_score', 'recall', 'f1_score',
+                        'total_records', 'prompt_version', 'is_test_run', 'timestamp']
         available_cols = [c for c in display_cols if c in df_history.columns]
+        
+        # Format test-run flag
+        if 'is_test_run' in df_history.columns:
+            df_history['is_test_run'] = df_history['is_test_run'].apply(lambda x: '🧪' if x == 1 else '')
         
         st.dataframe(df_history[available_cols], use_container_width=True)
         
-        # Compare runs
-        st.divider()
-        st.markdown("### Compare Runs")
-        
         run_ids = df_history['run_id'].tolist()
-        col1, col2 = st.columns(2)
         
-        with col1:
-            run1 = st.selectbox("Run 1", run_ids, key="compare_run1")
-        with col2:
-            run2 = st.selectbox("Run 2", run_ids, index=min(1, len(run_ids)-1), key="compare_run2")
+        # ==========================================
+        # Run Drill-Down
+        # ==========================================
+        st.divider()
+        st.markdown("### 🔍 Run Drill-Down")
         
-        if st.button("Compare"):
-            comparison = storage.compare_runs(run1, run2)
+        selected_drill_run = st.selectbox(
+            "Select a run to inspect",
+            run_ids,
+            key="drill_run_select"
+        )
+        
+        if selected_drill_run:
+            # Get run metadata
+            run_meta = df_history[df_history['run_id'] == selected_drill_run].iloc[0].to_dict()
+            
+            # --- Provenance Card ---
+            st.markdown("#### 📋 Run Provenance")
+            prov_c1, prov_c2, prov_c3, prov_c4 = st.columns(4)
+            with prov_c1:
+                st.metric("Model", run_meta.get('model', 'N/A'))
+            with prov_c2:
+                st.metric("Prompt", run_meta.get('prompt_version', 'N/A'))
+            with prov_c3:
+                st.metric("Phases", run_meta.get('phases_run', 'N/A'))
+            with prov_c4:
+                st.metric("Records", run_meta.get('total_records', 0))
+            
+            # Show prompt text if version_id exists
+            pv_id = run_meta.get('prompt_version_id')
+            if pv_id:
+                pv_data = storage.get_prompt_version(pv_id)
+                if pv_data:
+                    with st.expander(f"📝 Prompt Text ({pv_data.get('filename', 'unknown')})"):
+                        st.code(pv_data.get('content', ''), language='text')
+            
+            # --- Metrics Summary ---
+            st.markdown("#### 📊 Metrics")
+            m_c1, m_c2, m_c3, m_c4, m_c5 = st.columns(5)
+            with m_c1:
+                st.metric("Accuracy", f"{run_meta.get('accuracy', 0):.1f}%")
+            with m_c2:
+                st.metric("Precision", f"{run_meta.get('precision_score', 0):.1f}%")
+            with m_c3:
+                st.metric("Recall", f"{run_meta.get('recall', 0):.1f}%")
+            with m_c4:
+                st.metric("F1", f"{run_meta.get('f1_score', 0):.1f}%")
+            with m_c5:
+                sim = run_meta.get('avg_justification_similarity')
+                st.metric("Avg Similarity", f"{sim:.1f}%" if sim else "N/A")
+            
+            # --- Item Determinations ---
+            st.markdown("#### 📋 Item Determinations")
+            
+            run_results = storage.get_run_results(selected_drill_run)
+            
+            if run_results:
+                df_items = pd.DataFrame(run_results)
+                
+                # Division filter
+                if 'office' in df_items.columns:
+                    offices = sorted(df_items['office'].dropna().unique().tolist())
+                    offices = [o for o in offices if o]  # Remove empties
+                    if offices:
+                        selected_offices = st.multiselect(
+                            "🏢 Filter by Division (Office)",
+                            options=offices,
+                            default=[],
+                            key="drill_office_filter"
+                        )
+                        if selected_offices:
+                            df_items = df_items[df_items['office'].apply(
+                                lambda x: any(off in str(x) for off in selected_offices)
+                            )]
+                
+                # Display table
+                item_display_cols = ['compliance_id', 'office', 'ground_truth', 'phase1_flag',
+                                     'phase2_flag', 'is_correct', 'similarity_score']
+                item_available = [c for c in item_display_cols if c in df_items.columns]
+                
+                # Color-code correctness
+                if 'is_correct' in df_items.columns:
+                    df_items['Result'] = df_items['is_correct'].apply(lambda x: '✅' if x == 1 else '❌')
+                    item_available = [c for c in item_available if c != 'is_correct'] + ['Result']
+                
+                st.dataframe(df_items[item_available], use_container_width=True, height=400)
+                
+                # Expandable detail for selected item
+                if len(df_items) > 0:
+                    detail_item = st.selectbox(
+                        "Select item for full response",
+                        df_items['compliance_id'].tolist(),
+                        key="detail_item_select"
+                    )
+                    if detail_item:
+                        item_row = df_items[df_items['compliance_id'] == detail_item].iloc[0].to_dict()
+                        det_c1, det_c2 = st.columns(2)
+                        with det_c1:
+                            st.markdown("**Phase 2 Response:**")
+                            resp = item_row.get('phase2_response', item_row.get('phase2_justification', 'N/A'))
+                            with st.expander("View", expanded=False):
+                                st.markdown(resp if resp else 'No response stored')
+                        with det_c2:
+                            st.markdown("**Phase 3 Response:**")
+                            resp3 = item_row.get('phase3_response', 'N/A')
+                            with st.expander("View", expanded=False):
+                                st.markdown(resp3 if resp3 else 'No response stored')
+                
+                # --- FP/FN Breakdown by Division ---
+                if 'office' in df_items.columns and len(df_items) > 0:
+                    st.markdown("#### 📊 FP/FN Breakdown by Division")
+                    
+                    from src.scoring.metrics import calculate_metrics_by_group
+                    
+                    # Map DB column names to what calculate_metrics expects
+                    items_for_metrics = []
+                    for _, row in df_items.iterrows():
+                        items_for_metrics.append({
+                            'Office': row.get('office', ''),
+                            'phase2_flag': row.get('phase2_flag', ''),
+                            'updated_flag': row.get('ground_truth', '')
+                        })
+                    
+                    group_metrics = calculate_metrics_by_group(items_for_metrics)
+                    
+                    if group_metrics:
+                        chart_data = []
+                        for office, gm in group_metrics.items():
+                            chart_data.append({
+                                'Division': office[:20],
+                                'TP': gm.get('true_positives', 0),
+                                'FP': gm.get('false_positives', 0),
+                                'FN': gm.get('false_negatives', 0),
+                                'TN': gm.get('true_negatives', 0),
+                                'Accuracy': gm.get('accuracy', 0)
+                            })
+                        
+                        df_chart = pd.DataFrame(chart_data)
+                        st.dataframe(df_chart, use_container_width=True)
+                        
+                        # Bar chart
+                        chart_cols = ['Division', 'FP', 'FN']
+                        df_bar = df_chart[chart_cols].set_index('Division')
+                        st.bar_chart(df_bar)
+            else:
+                st.info("No item-level results stored for this run (older runs may lack item data).")
+        
+        # ==========================================
+        # Compare Runs (Enhanced Diffing)
+        # ==========================================
+        st.divider()
+        st.markdown("### 🔀 Compare Runs (A vs B)")
+        
+        diff_c1, diff_c2 = st.columns(2)
+        with diff_c1:
+            run_a = st.selectbox("Run A (baseline)", run_ids, key="compare_run1")
+        with diff_c2:
+            run_b = st.selectbox("Run B (new)", run_ids, index=min(1, len(run_ids)-1), key="compare_run2")
+        
+        if st.button("🔀 Compare", type="primary"):
+            comparison = storage.compare_runs(run_a, run_b)
             if "error" not in comparison:
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
+                # Metric deltas
+                st.markdown("#### 📈 Metric Deltas")
+                delta_c1, delta_c2, delta_c3, delta_c4 = st.columns(4)
+                with delta_c1:
                     st.metric("Accuracy Δ", f"{comparison['accuracy_diff']:+.1f}%")
-                with col2:
+                with delta_c2:
                     st.metric("Precision Δ", f"{comparison['precision_diff']:+.1f}%")
-                with col3:
+                with delta_c3:
                     st.metric("Recall Δ", f"{comparison['recall_diff']:+.1f}%")
-                with col4:
+                with delta_c4:
                     st.metric("F1 Δ", f"{comparison['f1_diff']:+.1f}%")
+                
+                # Flipped items
+                st.markdown("#### 🔄 Flipped Items")
+                st.caption("Items whose correctness changed between runs")
+                
+                flipped = storage.get_flipped_items(run_a, run_b)
+                
+                if flipped:
+                    df_flipped = pd.DataFrame(flipped)
+                    
+                    # Add direction indicator
+                    df_flipped['Direction'] = df_flipped.apply(
+                        lambda r: '🟢 Improved' if r['run_b_correct'] == 1 else '🔴 Regressed',
+                        axis=1
+                    )
+                    
+                    improved = len(df_flipped[df_flipped['run_b_correct'] == 1])
+                    regressed = len(df_flipped[df_flipped['run_b_correct'] == 0])
+                    
+                    flip_c1, flip_c2, flip_c3 = st.columns(3)
+                    with flip_c1:
+                        st.metric("Total Flipped", len(flipped))
+                    with flip_c2:
+                        st.metric("🟢 Improved", improved)
+                    with flip_c3:
+                        st.metric("🔴 Regressed", regressed)
+                    
+                    flip_display = ['compliance_id', 'office', 'ground_truth',
+                                    'run_a_flag', 'run_b_flag', 'Direction']
+                    flip_avail = [c for c in flip_display if c in df_flipped.columns]
+                    st.dataframe(df_flipped[flip_avail], use_container_width=True)
+                else:
+                    st.success("No items flipped between these runs.")
+                
+                # Side-by-side prompt comparison
+                r1_details = comparison.get('run_1_details', {})
+                r2_details = comparison.get('run_2_details', {})
+                pv1 = r1_details.get('prompt_version_id')
+                pv2 = r2_details.get('prompt_version_id')
+                
+                if pv1 and pv2 and pv1 != pv2:
+                    st.markdown("#### 📝 Prompt Diff")
+                    pv1_data = storage.get_prompt_version(pv1)
+                    pv2_data = storage.get_prompt_version(pv2)
+                    
+                    if pv1_data and pv2_data:
+                        import difflib
+                        diff_lines = list(difflib.unified_diff(
+                            pv1_data['content'].splitlines(keepends=True),
+                            pv2_data['content'].splitlines(keepends=True),
+                            fromfile=f"Run A: {pv1_data.get('filename', 'unknown')}",
+                            tofile=f"Run B: {pv2_data.get('filename', 'unknown')}",
+                            lineterm=''
+                        ))
+                        if diff_lines:
+                            st.code(''.join(diff_lines), language='diff')
+                        else:
+                            st.info("Prompt content is identical.")
+                elif pv1 and pv2 and pv1 == pv2:
+                    st.info("Both runs used the same prompt version.")
+            else:
+                st.error(comparison.get('error', 'Comparison failed'))
 
 # ============================================================
 # Footer

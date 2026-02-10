@@ -1,0 +1,10 @@
+command: ['streamlit', 'run', 'app.py', '--server.port', '8000']
+env:
+  - name: 'STREAMLIT_GATHER_USAGE_STATS'
+    value: 'false'
+  - name: 'DB_PATH'
+    value: '/Volumes/eo_tracker/eval_framework/app_data/benchmark.db'
+  - name: 'GEMINI_API_KEY'
+    valueFrom: 'gemini-api-key'
+  - name: 'ANTHROPIC_API_KEY'
+    valueFrom: 'anthropic-api-key'
