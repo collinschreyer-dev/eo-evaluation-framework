@@ -25,3 +25,14 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Results data (stored on Databricks Volume, not in git)
+results/*.json
+results/*.csv
+results/*.db
+results/*_backup*
+
+# Docker/Render (not needed for Databricks deployment)
+Dockerfile
+.dockerignore
+render.yaml
